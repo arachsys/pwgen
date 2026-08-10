@@ -1,0 +1,75 @@
+pwgen
+=====
+
+pwgen is a script to generate pronounceable passwords in the same style
+as classic pwgen, but with quantified entropy and unbiased distribution.
+
+
+History
+-------
+
+Ted Ts'o's original pwgen generates passwords using a series of phonetic
+heuristics, making them easier to read and memorise at the cost of reduced
+entropy per character.
+
+Unfortunately, it selects some passwords much more frequently than others.
+The ad hoc algorithm is hard to investigate analytically, but for a specific
+output, it's possible to take a dynamic programming approach, summing
+probabilities across all the possible paths that might have produced it.
+
+Doing this for 12-character pwgen phonetic outputs shows wildly varying
+probabilities, with -log2(p) ranging from 59 right down to 35, compared
+with 71.5 for uniform choices from [A-Za-z0-9]{12}. A 12-character password
+with less entropy than a 6-character uniform one is not ideal.
+
+
+Unbiased selection
+------------------
+
+We can fix this problem by choosing between every permitted output with
+the same probability.
+
+First, we define some simple rules to achieve a similar result to the
+original. Single or double vowels alternate with single consonants or
+whitelisted consonant pairs to form words. Only the first letter of a
+word can be capitalised, and words can only be interrupted by a digit
+after at least three letters.
+
+From a state representation of a partial password, moves() yields each
+acceptable continuation character in turn, in deterministic order, with the
+corresponding updated state. The resulting tree defines a total ordering
+on permitted full-length passwords.
+
+count() caches the number of full completions from a given state, i.e.
+the size of any subtree. This enables us to traverse efficiently to any
+leaf from its index in the ordering.
+
+To generate an unbiased password, we just uniformly choose an index within
+the ordering range, then traverse the tree to return the corresponding leaf.
+
+This process results in 12-character and 16-character outputs with a
+constant 53.3 and 71.1 bits of entropy respectively, compared with 71.5
+and 95.3 bits for uniform passwords from the same alphabet.
+
+An 11-character pronounceable password has slightly lower collision
+probability than 8 characters selected uniformly from [A-Za-z0-9]{8}.
+
+The time to generate fifty 12-character or 16-character passwords is
+dominated by interpreter startup.
+
+
+Timing side channel
+-------------------
+
+Initialising the count cache takes much more time than subsequently
+traversing the tree to select an individual password. Nonetheless,
+the number of moves examined is leaked in the execution time with
+non-negligible magnitude: about 2% for 12-character passwords. This is
+analogous to leaking the sum of the bytes in a uniform password.
+
+
+Copying
+-------
+
+This software was written by Chris Webb <chris@arachsys.com> and is
+distributed as Free Software under the terms of the MIT license in COPYING.
