@@ -26,8 +26,8 @@ with less entropy than a 6-character uniform one is not ideal.
 Unbiased selection
 ------------------
 
-We can fix this problem by choosing between every permitted output with
-the same probability.
+We can fix this problem by choosing every permitted output with the
+same probability.
 
 First, we define some simple rules to achieve a similar result to the
 original. Single or double vowels alternate with single consonants or
@@ -53,9 +53,11 @@ and 95.3 bits for uniform passwords from the same alphabet.
 
 An 11-character pronounceable password has slightly lower collision
 probability than 8 characters selected uniformly from [A-Za-z0-9]{8}.
+10-character output beats the 44-bit entropy described in xkcd 936's
+"correct horse battery staple".
 
 The time to generate fifty 12-character or 16-character passwords is
-dominated by interpreter startup.
+dominated by interpreter startup, so the algorithm is acceptably fast.
 
 
 Timing side channel
@@ -66,6 +68,37 @@ traversing the tree to select an individual password. Nonetheless,
 the number of moves examined is leaked in the execution time with
 non-negligible magnitude: about 2% for 12-character passwords. This is
 analogous to leaking the sum of the bytes in a uniform password.
+
+It's hard to contrive uses for pwgen that expose timing to an attacker,
+but this variable execution time implies you shouldn't try.
+
+
+Variations
+----------
+
+The script is designed for easy modification, and to report entropy
+correctly subject to those changes. However, moves() must always yield
+each possible continuation at most once. Any repetition will bias the
+distribution and break the entropy calculation.
+
+From the baseline 53.3 bits of surprise in a 12-character output,
+adding an extra symbol to the digits increases it by about 0.25 bits.
+Eliminating digits altogether reduces it to 46.4 bits. In this case,
+capitals contribute exactly one bit: the case of the first letter.
+
+Allowing an extra consonant pair adds just 0.015 bits to a 12-character
+password; dropping clusters entirely costs only 0.88 bits. It is arguable
+whether this is worth the extra complexity they impose.
+
+We don't implement consonant triples like 'str' because they considerably
+enlarge the state space over which count() needs to cache, but experiments
+suggest they add negligible entropy in any case.
+
+With digits but no capitals, entropy is 50.7 bits. Case-folding standard
+pwgen output is sufficient to obtain unbiased lower-case passwords.
+
+The minimum word length between digits is quite significant. Varying this
+from 2 to 3 to 4 gives surprise bits of 55.2, 53.3 and 52.0 respectively.
 
 
 Copying
